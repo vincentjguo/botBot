@@ -13,7 +13,6 @@ token = None
 
 admin_id = None
 guild_id = None
-guild = None
 enableVoteAll = False
 minimal = False
 # TODO:Sketchy Fix, Find more robust solution
@@ -32,7 +31,19 @@ def keys_to_int(x):
     return {int(k): v for k, v in x.items()}
 
 
-def read_from_file():
+def ini():
+    # reads from ini file
+    global token, admin_id, ignored_channels
+    if not os.path.exists(iniFile):
+        print("Initialization file not found")
+        exit(1)
+    with open(iniFile, "r") as File:
+        data = json.loads(File.read())
+    token = data['token']
+    admin_id = data['admin_id']
+    ignored_channels = data['ignored_channels']
+    print("Read from ini file")
+
     # gets stored information on upvotes and user settings
     global karma, ignored_users, enableVoteAll, botRemoved, users_censored, minimal
     if not os.path.exists(file):
@@ -52,19 +63,6 @@ def read_from_file():
     print("Censored Users = " + str(users_censored))
     print("Minimal Mode = " + str(minimal))
 
-    # reads from ini file
-    global token, guild_id, admin_id, ignored_channels
-    if not os.path.exists(iniFile):
-        print("Initialization file not found")
-        exit(1)
-    with open(iniFile, "r") as File:
-        data = json.loads(File.read())
-    token = data['token']
-    guild_id = data['guild_id']
-    admin_id = data['admin_id']
-    ignored_channels = data['ignored_channels']
-    print("Read from ini file")
-
 
 def write_to_file():
     data = {
@@ -78,15 +76,16 @@ def write_to_file():
         f.write(json.dumps(data))
 
 
-read_from_file()
+ini()
 
 
 # noinspection PyTypeChecker
 @bot.event
 async def on_ready():
-    global guild
+    global guild_id
+    guild_id = list(map(lambda x: x.id, bot.guilds))
     print("Bot bot is online!")
-    guild = bot.get_guild(guild_id)
+    print(f"In guilds: {guild_id}")
 
 
 @bot.event
@@ -140,22 +139,22 @@ async def on_message(message):
 @slash.slash(
     name="leaderboard",
     description="Shows the leaderboard",
-    options=[],
-    guild_ids=[guild_id]
+    options=[]
 )
 @bot.command(name="leaderboard", help="Shows the leaderboard for most upvoted bots")
 async def leaderboard(ctx):
     print("Leaderboard has been requested")
-    global karma, guild
+    global karma
+    guild = ctx.guild
     if len(karma) == 0:
         await ctx.send("No users added")
         return
     karma = dict(sorted(karma.items(), key=lambda item: item[1], reverse=True))
     print("Bots: " + str(len(karma)))
+    print(str(karma))
     embed = discord.Embed(title="Leaderboard", description="Rankings based on upvotes", color=0x3997c6)
     user = None
-    while user is None and len(karma) > 0:
-        user_id = next(iter(karma))
+    for user_id in karma:
         user = guild.get_member(user_id)
         # if user not found, might be webhook
         if user is None:
@@ -166,17 +165,18 @@ async def leaderboard(ctx):
                     break
         # checks if member is not in server
         if user is None:
-            karma.pop(user_id)
-            print(str(user_id) + " not found. Deleting from records...")
-    if len(karma) == 0:
-        await ctx.send("No users added")
-        print("All users are invalid")
-        write_to_file()
+            print(str(user_id) + f" not in guild {guild.id}")
+        else:
+            break
+
+    if user is None:
+        print(f"No users found in {guild.id}")
+        await ctx.send("No users added in this guild")
         return
+
     embed.set_thumbnail(url=str(user.avatar_url))
     count = 1
     for i in list(karma):
-        print(i)
         member = guild.get_member(i)
         if member is None:
             webhooks = await guild.webhooks()
@@ -186,8 +186,7 @@ async def leaderboard(ctx):
                     break
         # checks if member is not in server
         if member is None:
-            karma.pop(i)
-            print(str(i) + " not found. Deleting from records...")
+            print(str(i) + f" not in guild {guild.id}")
             continue
 
         embed.add_field(name=str(count) + ". " + member.name, value=karma[member.id], inline=False)
@@ -200,8 +199,7 @@ async def leaderboard(ctx):
 @slash.slash(
     name="reset",
     description="Resets the leaderboard (Admin Required)",
-    options=[],
-    guild_ids=[guild_id]
+    options=[]
 )
 @bot.command(name="reset", help="Reset the leaderboard")
 async def resetLeaderboard(ctx):
@@ -226,8 +224,7 @@ async def resetLeaderboard(ctx):
             option_type=5,
             required=True
         )
-    ],
-    guild_ids=[guild_id]
+    ]
 )
 @bot.command(name="enablevoteall", help="Sets the option for all users to be voted")
 async def enable_vote_all(ctx, vote_all: bool):
@@ -247,8 +244,7 @@ async def enable_vote_all(ctx, vote_all: bool):
 @slash.slash(
     name="restart",
     description="Restarts the bot (Admin Required)",
-    options=[],
-    guild_ids=[guild_id]
+    options=[]
 )
 @bot.command(name="restart", help="Restarts and reloads the bot")
 async def restart(ctx):
@@ -270,8 +266,7 @@ async def restart(ctx):
             option_type=5,
             required=True
         )
-    ],
-    guild_ids=[guild_id]
+    ]
 )
 async def minimal_mode(ctx, enable: bool):
     global minimal
@@ -293,8 +288,7 @@ async def minimal_mode(ctx, enable: bool):
             option_type=6,
             required=True
         )
-    ],
-    guild_ids=[guild_id]
+    ]
 )
 async def censor_user(ctx, censored_user: discord.User):
     if ctx.author.id != admin_id:
@@ -387,8 +381,7 @@ async def on_reaction_remove(reaction, user):
             option_type=6,
             required=True
         )
-    ],
-    guild_ids=[guild_id]
+    ]
 )
 @bot.command(name="ignore", help="Ignores a user to be voted")
 async def ignore_user(ctx, user_ignored: discord.User):
