@@ -103,8 +103,7 @@ async def on_message(message):
             and message.channel.id not in ignored_channels:
         await message.add_reaction("⬆")
         await message.add_reaction("⬇")
-    if minimal and "good" in message.content.lower() \
-            and "bot" in message.content.lower() \
+    if minimal and "good bot" in message.content.lower() \
             and not message.author.bot:
         if message.reference is None:
             async with message.channel.typing():
@@ -116,7 +115,7 @@ async def on_message(message):
                             print(f"Added user {msg.author.id}")
                         else:
                             karma[msg.author.id] += 1
-                        await message.reply(f"Upvoted <@{msg.author.id}>")
+                        await message.add_reaction("✅")
                         print(f"Upvoted {msg.author.id}")
                         found = True
                         break
@@ -125,6 +124,8 @@ async def on_message(message):
                                         "you want to upvote with `good bot`")
         else:
             authorId = message.reference.resolved.author.id
+            if not message.reference.resolved.author.bot:
+                return
             if authorId not in karma:
                 karma[authorId] = 1
                 print(f"Added user {authorId}")
