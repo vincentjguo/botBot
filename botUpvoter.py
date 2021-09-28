@@ -204,7 +204,7 @@ async def leaderboard(ctx):
 )
 @bot.command(name="reset", help="Reset the leaderboard")
 async def resetLeaderboard(ctx):
-    if ctx.message.author.id != admin_id:
+    if ctx.author.id != admin_id:
         await ctx.send("Administrator privilege required")
         return
     global karma
