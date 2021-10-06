@@ -7,16 +7,14 @@ from discord_slash.utils import manage_commands
 import discord
 from discord.ext import commands
 
-bot = commands.Bot(command_prefix="~", intents=discord.Intents.all())
-slash = SlashCommand(bot, sync_commands=True)
 token = None
-
 admin_id = None
 guild_id = None
 enableVoteAll = False
 minimal = False
 # TODO:Sketchy Fix, Find more robust solution
 botRemoved = False
+ignore_webhooks = True
 
 iniFile = "ini.json"
 file = "botData.json"
@@ -77,7 +75,11 @@ def write_to_file():
 
 
 ini()
-
+activity = discord.Game(name="~help. Vote using reactions.")
+if minimal:
+    activity = discord.Game(name="~help. Vote by replying 'good bot'.")
+bot = commands.Bot(command_prefix="~", activity=activity, intents=discord.Intents.all())
+slash = SlashCommand(bot, sync_commands=True)
 
 # noinspection PyTypeChecker
 @bot.event
@@ -95,6 +97,10 @@ async def on_message(message):
         await message.delete()
         print("Censored message from " + str(message.author.id) + " deleted")
         return
+    # ignore webhooks
+    if ignore_webhooks and message.webhook_id:
+        return
+
     await bot.process_commands(message)
     if message.content.startswith("~"):
         return
