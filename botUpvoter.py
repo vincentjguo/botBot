@@ -81,6 +81,7 @@ if minimal:
 bot = commands.Bot(command_prefix="~", activity=activity, intents=discord.Intents.all())
 slash = SlashCommand(bot, sync_commands=True)
 
+
 # noinspection PyTypeChecker
 @bot.event
 async def on_ready():
@@ -281,6 +282,10 @@ async def minimal_mode(ctx, enable: bool):
         await ctx.send("Administrator privilege required")
         return
     minimal = enable
+    if minimal:
+        await bot.change_presence(activity=discord.Game(name="~help. Vote by replying 'good bot'."))
+    else:
+        await bot.change_presence(activity=discord.Game(name="~help. Vote using reactions."))
     await ctx.send(f"Minimal mode set to {minimal}")
 
 
