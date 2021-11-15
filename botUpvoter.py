@@ -261,7 +261,9 @@ async def restart(ctx):
         return
     await ctx.send("The bot will be restarted")
     print("Bot restarted")
-    os.execv(sys.executable, ['python'] + sys.argv)
+    #os.execv(sys.executable, ['python'] + sys.argv)
+    # crashes the program so systemd will catch and restart
+    quit(99)
 
 
 @slash.slash(
